@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Enterprise Chatbots with RAG</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #dbeafe;
+            --secondary: #7c3aed;
+            --accent: #06b6d4;
+            --text-dark: #1e293b;
+            --text-light: #64748b;
+            --bg-light: #f8fafc;
+            --white: #ffffff;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --border-radius: 16px;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.12);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            color: var(--text-dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .slides-container {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .slide {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 80px 0;
+            position: relative;
+        }
+
+        /* Header Slide */
+        .header-slide {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .header-slide h1 {
+            font-size: 4em;
+            margin-bottom: 30px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .header-slide p {
+            font-size: 1.6em;
+            opacity: 0.95;
+            font-weight: 400;
+            line-height: 1.4;
+        }
+
+        /* Content Slides */
+        .content-slide {
+            background: var(--white);
+            justify-content: center;
+        }
+
+        .slide-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 50px;
+            justify-content: center;
+        }
+
+        .slide-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            border-radius: 20px;
+            font-size: 2.2em;
+            margin-right: 30px;
+            flex-shrink: 0;
+            box-shadow: var(--shadow);
+        }
+
+        .slide-title {
+            font-size: 3em;
+            color: var(--text-dark);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .slide-content {
+            color: var(--text-dark);
+            line-height: 1.7;
+            font-size: 1.3em;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .slide-content p {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--primary-light) 0%, #e0f2fe 100%);
+            border-left: 6px solid var(--primary);
+            padding: 35px;
+            border-radius: var(--border-radius);
+            margin: 40px 0;
+            font-weight: 500;
+            color: var(--text-dark);
+            box-shadow: var(--shadow);
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .highlight-box i {
+            color: var(--primary);
+            margin-right: 12px;
+            font-size: 1.4em;
+        }
+
+        .problem-solution {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 50px 0;
+        }
+
+        .problem-card, .solution-card {
+            background: var(--white);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border-top: 6px solid transparent;
+        }
+
+        .problem-card:hover, .solution-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .problem-card {
+            border-top-color: var(--danger);
+        }
+
+        .solution-card {
+            border-top-color: var(--success);
+        }
+
+        .card-icon {
+            font-size: 3.2em;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .problem-card .card-icon {
+            color: var(--danger);
+        }
+
+        .solution-card .card-icon {
+            color: var(--success);
+        }
+
+        .problem-card h3, .solution-card h3 {
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .problem-card ul, .solution-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .problem-card li, .solution-card li {
+            padding: 15px 0;
+            color: var(--text-light);
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 1.15em;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .problem-card li:last-child, .solution-card li:last-child {
+            border-bottom: none;
+        }
+
+        .solution-card li::before {
+            content: '✓';
+            color: var(--success);
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+            font-size: 1.3em;
+        }
+
+        .problem-card li::before {
+            content: '✗';
+            color: var(--danger);
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+            font-size: 1.3em;
+        }
+
+        .architecture-image {
+            text-align: center;
+            margin: 50px 0;
+        }
+
+        .architecture-title {
+            font-size: 2.2em;
+            color: var(--primary);
+            margin-bottom: 40px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .rag-architecture-img {
+            max-width: 90%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            border: 2px solid #e2e8f0;
+        }
+
+        .example-box {
+            background: var(--white);
+            padding: 35px;
+            border-radius: var(--border-radius);
+            margin-top: 50px;
+            box-shadow: var(--shadow);
+            border-left: 6px solid var(--accent);
+        }
+
+        .example-title {
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 25px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .example-title i {
+            margin-right: 12px;
+        }
+
+        .example-content {
+            color: var(--text-dark);
+            line-height: 1.7;
+            font-size: 1.15em;
+        }
+
+        .query-box {
+            background: var(--primary-light);
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        .response-box {
+            background: var(--success);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-weight: 500;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        .agentic-example {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 45px;
+            border-radius: var(--border-radius);
+            margin: 50px 0;
+            box-shadow: var(--shadow);
+            border: 3px solid var(--accent);
+        }
+
+        .agentic-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .agentic-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            color: var(--white);
+            border-radius: 50%;
+            font-size: 2em;
+            margin-right: 25px;
+            flex-shrink: 0;
+            box-shadow: var(--shadow);
+        }
+
+        .agentic-title {
+            font-size: 2.2em;
+            color: var(--text-dark);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .agentic-subtitle {
+            color: var(--text-light);
+            font-size: 1.3em;
+        }
+
+        .agentic-flow {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin: 40px 0;
+        }
+
+        .agentic-step {
+            background: var(--white);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .agentic-step:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .step-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        .agentic-step h4 {
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+
+        .agentic-step p {
+            color: var(--text-light);
+            font-size: 1.1em;
+            line-height: 1.5;
+        }
+
+        /* Final Slide */
+        .final-slide {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: var(--white);
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .final-slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .final-content {
+            position: relative;
+            z-index: 1;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .final-slide h2 {
+            font-size: 3.5em;
+            margin-bottom: 40px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .final-slide p {
+            font-size: 1.6em;
+            opacity: 0.95;
+            margin: 25px 0;
+            line-height: 1.6;
+        }
+
+        .final-slide strong {
+            font-size: 1.8em;
+            display: block;
+            margin: 30px 0;
+        }
+
+        .footer {
+            background: var(--bg-light);
+            padding: 50px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 1.2em;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            max-width: 900px;
+            margin: 0 auto;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+
+        /* Navigation */
+        .slide-nav {
+            position: fixed;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .nav-dot.active {
+            background: var(--primary);
+            transform: scale(1.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .slide {
+                padding: 50px 0;
+            }
+            
+            .header-slide h1 {
+                font-size: 3.2em;
+            }
+            
+            .slide-title {
+                font-size: 2.5em;
+            }
+            
+            .problem-solution {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+            
+            .agentic-flow {
+                grid-template-columns: 1fr;
+                gap: 25px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 0;
+            }
+            
+            .header-slide h1 {
+                font-size: 2.5em;
+            }
+            
+            .header-slide p {
+                font-size: 1.3em;
+            }
+            
+            .slide-title {
+                font-size: 2em;
+            }
+            
+            .slide-icon {
+                width: 70px;
+                height: 70px;
+                font-size: 1.8em;
+                margin-right: 20px;
+            }
+            
+            .slide-content {
+                font-size: 1.15em;
+            }
+            
+            .final-slide h2 {
+                font-size: 2.5em;
+            }
+            
+            .final-slide p {
+                font-size: 1.3em;
+            }
+            
+            .slide-nav {
+                right: 20px;
+            }
+            
+            .agentic-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .agentic-icon {
+                margin-right: 0;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="slides-container">
+        <!-- SLIDE 1: Header -->
+        <div class="slide header-slide">
+            <div class="container">
+                <div class="header-content">
+                    <h1>Building Enterprise Chatbots with RAG</h1>
+                    <p>From Hallucinations to Trusted, Knowledge-Grounded AI Assistants</p>
+                </div>
+            </div>
+        </div>
+
+  
+
+        <!-- SLIDE 3: What is RAG? -->
+        <div class="slide content-slide">
+            <div class="container">
+                <div class="slide-header">
+                    <div class="slide-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div>
+                        <h2 class="slide-title">What is RAG?</h2>
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <p><strong>RAG = Retrieval + Generation</strong></p>
+                    <p>Traditional LLMs are frozen after training, leading to two critical issues:</p>
+                    
+                    <div class="problem-solution">
+                        <div class="problem-card">
+                            <div class="card-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <h3>Traditional LLM Problems</h3>
+                            <ul>
+                                <li>Outdated Knowledge</li>
+                                <li>Hallucinations & Guesses</li>
+                                <li>Costly & Time-Consuming Fine-Tuning</li>
+                            </ul>
+                        </div>
+                        <div class="solution-card">
+                            <div class="card-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h3>RAG Solution</h3>
+                            <ul>
+                                <li>Real-time Document Access</li>
+                                <li>Factual, Source-Grounded Answers</li>
+                                <li>Secure Company Data Integration</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box">
+                        <i class="fas fa-lightbulb"></i>
+                        RAG gives chatbots "open-book" access to trusted documents instead of relying only on memory.
+                    </div>
+
+                    <div class="example-box">
+                        <div class="example-title">
+                            <i class="fas fa-file-alt"></i>
+                            Simple Example
+                        </div>
+                        <div class="example-content">
+                            <div class="query-box">
+                                "What is my sick leave allowance?"
+                            </div>
+                            <p><strong>ChatGPT responds:</strong> "Typically companies offer 10-20 days..." (Generic, might be wrong)</p>
+                            <p><strong>RAG Chatbot responds:</strong> "According to your 2025 HR policy, you have 15 days of paid sick leave plus 5 emergency days." (Exact, grounded, trusted)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 4: RAG Architecture -->
+        <div class="slide content-slide">
+            <div class="container">
+                <div class="slide-header">
+                    <div class="slide-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <div>
+                        <h2 class="slide-title">RAG Architecture</h2>
+                    </div>
+                </div>
+                <div class="slide-content">
+
+                    <div class="architecture-image">
+                        <div class="architecture-title">RAG System Architecture</div>
+                        <img src="image.png" alt="RAG Architecture Diagram" class="rag-architecture-img">
+                    </div>
+
+                    <div class="highlight-box">
+                        <i class="fas fa-key"></i>
+                        This architecture ensures the LLM is NOT guessing — it's answering using actual retrieved content.
+                    </div>
+
+                    <div class="example-box">
+                        <div class="example-title">
+                            <i class="fas fa-cogs"></i>
+                            How It Works in Practice
+                        </div>
+                        <div class="example-content">
+                            <div class="query-box">
+                                Employee asks: "What is my sick leave allowance?"
+                            </div>
+                            <p><strong>System:</strong> Finds exact paragraph from HR_Policy_2025.pdf</p>
+                            <div class="response-box">
+                                <strong>LLM Response:</strong> "According to section 4.2 of the 2025 HR Policy, full-time employees receive 15 days of paid sick leave annually."
+                            </div>
+                            <p><strong>Result:</strong> No hallucination, no outdated answers — just factual, verifiable information.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 5: Why RAG is Ideal -->
+        <div class="slide content-slide">
+            <div class="container">
+                <div class="slide-header">
+                    <div class="slide-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div>
+                        <h2 class="slide-title">Why RAG is Ideal for Chatbots</h2>
+                    </div>
+                </div>
+                <div class="slide-content">
+                    <p>RAG is perfect for production chatbots because it combines document retrieval with real-time data access:</p>
+
+                    <div class="agentic-example">
+                        <div class="agentic-header">
+                            <div class="agentic-icon">
+                                <i class="fas fa-university"></i>
+                            </div>
+                            <div>
+                                <div class="agentic-title">Bank Loan Assistant</div>
+                                <div class="agentic-subtitle">RAG with PDF + Database + API Integration</div>
+                            </div>
+                        </div>
+
+                        <div class="agentic-flow">
+                            <div class="agentic-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-file-pdf"></i>
+                                </div>
+                                <h4>PDF Policy Retrieval</h4>
+                                <p>Reads loan policy documents and eligibility criteria</p>
+                            </div>
+                            <div class="agentic-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <h4>Database Query</h4>
+                                <p>Checks customer history and credit records</p>
+                            </div>
+                            <div class="agentic-step">
+                                <div class="step-icon">
+                                    <i class="fas fa-plug"></i>
+                                </div>
+                                <h4>API Integration</h4>
+                                <p>Calls credit scoring and eligibility APIs</p>
+                            </div>
+                        </div>
+
+                        <div class="example-content">
+                            <div class="query-box">
+                                "Can I get a car loan for $25,000 and what would be my interest rate?"
+                            </div>
+                            <div class="response-box">
+                                "Based on your credit score of 750 and our current auto loan policy (section 3.2), you're approved for $25,000 at 5.9% APR for 60 months. Your monthly payment would be $482. Requires income verification."
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box">
+                        <i class="fas fa-check-double"></i>
+                        RAG transforms generic chatbots into domain experts that combine document knowledge with real-time data for accurate, actionable responses.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 6: Final Summary -->
+        <div class="slide final-slide">
+            <div class="container">
+                <div class="final-content">
+                    <h2>RAG: The Foundation of Trustworthy AI</h2>
+                    <p>Stop relying on LLM memory alone. Connect your chatbot to real knowledge sources.</p>
+                    <strong>RAG = LLM Reasoning + Your Actual Data</strong>
+                    <p>Transform generic chatbots into domain experts that provide factual, verifiable answers grounded in your documents, databases, and APIs.</p>
+                    <p>Zero hallucinations. Complete transparency. Enterprise-ready.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="container">
+            <p><i class="fas fa-graduation-cap"></i> <strong>Key Takeaway:</strong> RAG isn't just a technique—it's the essential architecture for building chatbots that companies can actually trust with real business decisions.</p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        function scrollToSlide(index) {
+            const slides = document.querySelectorAll('.slide');
+            slides[index].scrollIntoView({ behavior: 'smooth' });
+            updateNavDots(index);
+        }
+
+        function updateNavDots(activeIndex) {
+            const dots = document.querySelectorAll('.nav-dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === activeIndex);
+            });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const slides = document.querySelectorAll('.slide');
+            const currentSlide = Math.round(window.scrollY / window.innerHeight);
+            
+            if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+                e.preventDefault();
+                const nextSlide = Math.min(currentSlide + 1, slides.length - 1);
+                scrollToSlide(nextSlide);
+            } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+                e.preventDefault();
+                const prevSlide = Math.max(currentSlide - 1, 0);
+                scrollToSlide(prevSlide);
+            }
+        });
+
+        // Update nav dots on scroll
+        window.addEventListener('scroll', () => {
+            const currentSlide = Math.round(window.scrollY / window.innerHeight);
+            updateNavDots(currentSlide);
+        });
+    </script>
+</body>
+</html>
